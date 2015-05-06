@@ -218,6 +218,13 @@ CString trim(std::string in)
 	out.Delete(out.GetLength()-2, 2);//去掉后面的两个引号
 	return out;
 }
+CString trimCString(CString in)
+{
+	CString out = in;
+	out.Delete(-1, 1);				//去掉前面的一个引号
+	out.Delete(out.GetLength()-2, 2);//去掉后面的两个引号
+	return out;
+}
 
 //传入参数，运行Lua脚本
 CString runLuaScript(CString actionName, CString sourceType, CString jsonParams, CString fileName)
@@ -413,8 +420,10 @@ bool handleHTTP()
 			Json::Value value = (*it);
 
 			//通过trim()清除无用字符
-			CString key_str = trim(key.toStyledString());
-			CString value_str = trim(value.toStyledString());
+			//CString key_str = trim(key.toStyledString());
+			//CString value_str = trim(value.toStyledString());
+			CString key_str = key.asCString();
+			CString value_str = value.asCString();
 			if (key_str != "User-Agent"){
 				objHttpReq.AddHeader (key_str, value_str) ;
 			}
@@ -427,8 +436,10 @@ bool handleHTTP()
 			Json::Value value = (*it);
 
 			//通过trim()清除无用字符
-			CString key_str = trim(key.toStyledString());
-			CString value_str = trim(value.toStyledString());
+			//CString key_str = trim(key.toStyledString());
+			//CString value_str = trim(value.toStyledString());
+			CString key_str = key.asCString();
+			CString value_str = value.asCString();
 
 			objHttpReq.AddParam (key_str, value_str) ;
 		}

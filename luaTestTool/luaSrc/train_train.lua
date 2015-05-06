@@ -632,7 +632,7 @@ function InitStep1Request(info)
 	rst.params["skin"] = "default";
 	rst.params["skinLoaderChecksum"] = "";
 	rst.params["isAjaxRequest"] = "true";
-	rst.params["x"] = 0.17838781489990652;
+	rst.params["x"] = "0.17838781489990652";
 
 	return rst;
 end
@@ -659,6 +659,8 @@ function InitStep1Response(info, response)
 	info["WL-Instance-Id"] = wlInstanceId;
 	info["morCustomRealm"] = BuildCode(morCustomRealm);
 
+	print("------------morCustomRealm = "..info["morCustomRealm"]);
+
 	rst.code = 1;
 	rst.message = "正在初始化"
 	return rst;
@@ -677,13 +679,14 @@ function InitStep2Request(info)
 
 	--构建Authorization字段
 	local buffer = {};
-	buffer["morCustomRealm"] = info["morCustomRealm"];
+	buffer["morCustomRealm"] = (info["morCustomRealm"]);
 	--拼接Authorization字段
-	local authorization = "";
-	authorization = cjson.encode(buffer);
+--~ 	local authorization = "";
 --~ 	for k, v in pairs(buffer) do
 --~ 		authorization = authorization..'"'..k..'":"'..v..'",'
 --~ 	end
+	local authorization = cjson.encode(buffer);
+	print("-----------Authorization = "..authorization)
 
     rst.header["Authorization"] = authorization;
 
@@ -691,7 +694,7 @@ function InitStep2Request(info)
 	rst.params["skin"] = "default";
 	rst.params["skinLoaderChecksum"] = "";
 	rst.params["isAjaxRequest"] = "true";
-	rst.params["x"] = 0.3400703438092023;
+	rst.params["x"] = "0.3400703438092023";
 
 	return rst;
 end
@@ -773,7 +776,7 @@ function InitStep3Request(info)
 	rst.params["skin"] = "default";
 	rst.params["skinLoaderChecksum"] = "";
 	rst.params["isAjaxRequest"] = "true";
-	rst.params["x"] = 0.7063577543012798;
+	rst.params["x"] = "0.7063577543012798";
 
 	return rst;
 end
@@ -1110,7 +1113,6 @@ function doParser(source, action, json)
 end
 
 
---~ aa = doParser("", "mobileinit", [[{"code":1,"params":"","responseData":{"body":"OK","code":200,"header":""},"swapInfo":{"server_cmd":"reach","server_data":[]}}
---~ ]])
+--~ aa = doParser("", "mobileinit", [[{"code":1,"params":"","responseData":{"body":"/*-secure-\n{\"challenges\":{\"wl_antiXSRFRealm\":{\"WL-Instance-Id\":\"b6jbe8befn2ucaperg62koqq2o\"},\"morCustomRealm\":{\"WL-Challenge-Data\":\"514574N306024X5F23A66AS277924C596668X915B046ES515959N192015N855596C127455C749371C364321N159003X750F31E8S887911X63C13F8CS\"}}}*/","code":200,"header":""},"swapInfo":{"server_cmd":"initStep1","server_data":[]}}]])
 --~ print(aa)
 
