@@ -641,22 +641,23 @@ function InitStep1Response(info, response)
 	local rst = check12306Response(response);
 	if (rst.code < 0) then return rst; end;
 
---~ 	local data = response.body;
---~ 	local wlInstanceId = "";
---~ 	_,_,wlInstanceId = string.find(data,"WL-Instance-Id\":\"(%w+)\"");
 	local sp, ep, val, reg = nil, nil, nil, nil;
 	reg = "\/\*-secure%s*-%s*([^\*].-)%s*\*\/";
 	sp, ep, jsonData = string.find(response.body, reg);
 
-	local morCustomRealm = getObjectValueByPath(jsonData, "challenges.morCustomRealm.WL-Chanllenge-Data") or "";
-	local wlInstanceId = getObjectValueByPath(jsonData, "challenges.wl_antiXSRFRealm.WL-Instance-Id") or "";
+	local jData = cjson.decode(jsonData);
+	local wlInstanceId = jData.challenges["wl_antiXSRFRealm"]["WL-Instance-Id"];
+	local morCustomRealm = jData.challenges["morCustomRealm"]["WL-Challenge-Data"];
+
+--~ 	local morCustomRealm = getObjectValueByPath(jsonData, "challenges.morCustomRealm.WL-Chanllenge-Data") or "";
+--~ 	local wlInstanceId = getObjectValueByPath(jsonData, "challenges.wl_antiXSRFRealm.WL-Instance-Id") or "";
 	if morCustomRealm == "" or wlInstanceId == "" then
 		rst.code = -1;
 		rst.message = "InstanceId未找到";
 		return rst;
 	end
 	info["WL-Instance-Id"] = wlInstanceId;
-	info["morCustomRealm"] = buildCode(morCustomRealm);
+	info["morCustomRealm"] = BuildCode(morCustomRealm);
 
 	rst.code = 1;
 	rst.message = "正在初始化"
@@ -679,11 +680,12 @@ function InitStep2Request(info)
 	buffer["morCustomRealm"] = info["morCustomRealm"];
 	--拼接Authorization字段
 	local authorization = "";
-	for k, v in pairs(buffer) do
-		authorization = authorization..'"'..k..'":"'..v..'",'
-	end
+	authorization = cjson.encode(buffer);
+--~ 	for k, v in pairs(buffer) do
+--~ 		authorization = authorization..'"'..k..'":"'..v..'",'
+--~ 	end
 
-    rst.request_info["header_Authorization"] = authorization;
+    rst.header["Authorization"] = authorization;
 
 	--构建post请求的params
 	rst.params["skin"] = "default";
@@ -702,7 +704,9 @@ function InitStep2Response(info, response)
 	reg = "\/\*-secure%s*-%s*([^\*].-)%s*\*\/";
 	sp, ep, jsonData = string.find(response.body, reg);
 
-	local token = getObjectValueByPath(jsonData, "challenges.wl_deviceNoProvisioningRealm.token") or "";
+	local jData = cjson.decode(jsonData);
+	local token = jData.challenges["wl_deviceNoProvisioningRealm"]["token"];
+--~ 	local token = getObjectValueByPath(jsonData, "challenges.wl_deviceNoProvisioningRealm.token") or "";
 	if token == "" then
 		rst.code = -1;
 		rst.message = "token未找到";
@@ -764,7 +768,7 @@ function InitStep3Request(info)
 	end
 	authorization = '{'..authorization..'}'
 
-    rst.request_info["header_Authorization"] = authorization;
+    rst.header["Authorization"] = authorization;
 	--构建post请求的params
 	rst.params["skin"] = "default";
 	rst.params["skinLoaderChecksum"] = "";

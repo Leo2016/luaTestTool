@@ -350,7 +350,7 @@ bit = {
 end
 --]]
 ---[[“morCustomRealm”编码解析代码块，内含"16进制转Base64编码"
-do
+
 --N 数据映射表
 cnt_n = 12
 --表内均是16进制数
@@ -590,7 +590,7 @@ function BuildCode(val)
 	return rst;
 end
 
-end --匹配上一个do，morCustomRealm编码解析代码块结束
+ --匹配上一个do，morCustomRealm编码解析代码块结束
 --]]
 ---[[12306APP端初始化代码块
 function ReachRequest(info)
@@ -647,16 +647,23 @@ function InitStep1Response(info, response)
 	local sp, ep, val, reg = nil, nil, nil, nil;
 	reg = "\/\*-secure%s*-%s*([^\*].-)%s*\*\/";
 	sp, ep, jsonData = string.find(response.body, reg);
+	print("jsonData = "..jsonData);
+	local jData = cjson.decode(jsonData);
+	local wlInstanceId = jData.challenges["wl_antiXSRFRealm"]["WL-Instance-Id"];
+	local morCustomRealm = jData.challenges["morCustomRealm"]["WL-Challenge-Data"];
 
-	local morCustomRealm = getObjectValueByPath(jsonData, "challenges.morCustomRealm.WL-Chanllenge-Data") or "";
-	local wlInstanceId = getObjectValueByPath(jsonData, "challenges.wl_antiXSRFRealm.WL-Instance-Id") or "";
+--~ 	local morCustomRealm = getObjectValueByPath(jsonData, "challenges.morCustomRealm.WL-Chanllenge-Data") or "";
+	print("morCustomRealm = "..morCustomRealm);
+--~ 	local wlInstanceId = getObjectValueByPath(jsonData, "challenges.wl_antiXSRFRealm.WL-Instance-Id") or "";
+	print("wlInstanceId = "..wlInstanceId);
+
 	if morCustomRealm == "" or wlInstanceId == "" then
 		rst.code = -1;
 		rst.message = "InstanceId未找到";
 		return rst;
 	end
 	info["WL-Instance-Id"] = wlInstanceId;
-	info["morCustomRealm"] = buildCode(morCustomRealm);
+	info["morCustomRealm"] = BuildCode(morCustomRealm);
 
 	rst.code = 1;
 	rst.message = "正在初始化"
@@ -683,7 +690,7 @@ function InitStep2Request(info)
 		authorization = authorization..'"'..k..'":"'..v..'",'
 	end
 
-    rst.request_info["header_Authorization"] = authorization;
+    rst.header["Authorization"] = authorization;
 
 	--构建post请求的params
 	rst.params["skin"] = "default";
@@ -764,7 +771,7 @@ function InitStep3Request(info)
 	end
 	authorization = '{'..authorization..'}'
 
-    rst.request_info["header_Authorization"] = authorization;
+    rst.header["Authorization"] = authorization;
 	--构建post请求的params
 	rst.params["skin"] = "default";
 	rst.params["skinLoaderChecksum"] = "";
@@ -788,18 +795,22 @@ function doMoBileInitParser()
 
 	rst.code = 1;
 	rst.message = "";
-
 	if(swapInfo.server_cmd == nil) then
 		rst.headsInfo = ReachRequest(serverData);
 		swapInfo.server_cmd = "reach";
+
 	elseif(swapInfo.server_cmd == "reach") then
 --~ 		print("1");
+
 		local info = ReachResponse(serverData, response);
 		rst.code, rst.message, rst.dataInfo = info.code, info.message, nil;
+
 		if (info.code < 0) then
 			--错误处理
+
 		else
 			rst.headsInfo = InitStep1Request(serverData);
+
 			swapInfo.server_cmd = "initStep1";
 		end
 	elseif(swapInfo.server_cmd == "initStep1") then
@@ -1106,7 +1117,6 @@ function doParser(source, action, json)
 end
 
 
---~ aa = doParser("", "mobileinit", [[{"code":1,"params":"","responseData":{"body":"OK","code":200,"header":""},"swapInfo":{"server_cmd":"reach","server_data":[]}}
---~ ]])
---~ print(aa)
+aa = doParser("", "mobileinit", [[{"code":1,"params":"","responseData":{"body":"/*-secure-\n{\"challenges\":{\"wl_antiXSRFRealm\":{\"WL-Instance-Id\":\"6gc8d0haaamhsa1ackop8grv3d\"},\"morCustomRealm\":{\"WL-Challenge-Data\":\"353528C061839X23FD2656S140431N015687X78BFDC15S485535N819051X71B3F9EFS551846C900963N806341XC51C6221S092816C952496N679433XF92B383DS\"}}}*/","code":200,"header":""},"swapInfo":{"server_cmd":"initStep1","server_data":[]}}]])
+print(aa)
 

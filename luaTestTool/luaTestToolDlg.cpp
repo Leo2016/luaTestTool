@@ -149,11 +149,12 @@ BOOL CluaTestToolDlg::OnInitDialog()
 
 	//设置控件初始值
 	//m_EditBrowse_SelectFile_str	= "D:/Users/sjlv/Documents/Visual Studio 2010/Projects/luaTestTool/luaTestTool/luaSrc/train_train.lua";
-	//m_Edit_ActionName_str		= "mobileinit";
-	//m_Edit_SourceType_str		= "";
-	//m_Edit_Params_str			= "\"\'\'\"";
+	m_Edit_ActionName_str		= "mobileinit";
+	m_Edit_SourceType_str		= "";
+	m_Edit_Params_str			= "\"\'\'\"";
 	//m_Edit_ServerCmd_str		= "通过分号来分割，若只有一个ServerCmd，则这栏可以不填";
-	//UpdateData(FALSE);
+	m_Edit_ServerCmd_str		= "aa;bb;cc;dd";
+	UpdateData(FALSE);
 
 	return TRUE;  // return TRUE  unless you set the focus to a control
 }
@@ -362,10 +363,10 @@ CString encodeJson(CString extraParams)
 		std::string jsonStr = writer.write(root);
 
 		//修改字符串，再其前后加一对[[]]
-		CString rst = jsonStr.c_str();
-		rst.Insert(-1, "[[");
-		rst.Insert(rst.GetLength(), "]]");
-		return rst;
+		//CString rst = jsonStr.c_str();
+		//rst.Insert(-1, "[[");
+		//rst.Insert(rst.GetLength(), "]]");
+		return jsonStr.c_str();
 	}catch(CFileException* pe)
 	{
 		TRACE(_T("File could not be opened, cause = %d\n"),
