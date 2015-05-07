@@ -72,7 +72,6 @@ END_MESSAGE_MAP()
 
 CluaTestToolDlg::CluaTestToolDlg(CWnd* pParent /*=NULL*/)
 	: CDialogEx(CluaTestToolDlg::IDD, pParent)
-	, m_Edit_ActionName_str(_T(""))
 	, m_EditBrowse_SelectFile_str(_T(""))
 	, m_Edit_SourceType_str(_T(""))
 	, m_Edit_Params_str(_T(""))
@@ -88,8 +87,7 @@ void CluaTestToolDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
 	DDX_Control(pDX, IDC_EditBrowse_SelectFile, m_EditBrowse_SelectFile);
-	DDX_Control(pDX, IDC_Edit_ActionName, m_Edit_ActionName);
-	DDX_Text(pDX, IDC_Edit_ActionName, m_Edit_ActionName_str);
+
 	DDX_Text(pDX, IDC_EditBrowse_SelectFile, m_EditBrowse_SelectFile_str);
 	DDX_Text(pDX, IDC_Edit_SourceType, m_Edit_SourceType_str);
 	DDX_Text(pDX, IDC_Edit_Params, m_Edit_Params_str);
@@ -104,7 +102,6 @@ BEGIN_MESSAGE_MAP(CluaTestToolDlg, CDialogEx)
 	ON_WM_QUERYDRAGICON()
 	ON_BN_CLICKED(IDOK, &CluaTestToolDlg::OnBnClickedOk)
 //	ON_EN_SETFOCUS(IDC_Edit_ServerCmd, &CluaTestToolDlg::OnEnSetfocusEditServercmd)
-//	ON_EN_SETFOCUS(IDC_Edit_ActionName, &CluaTestToolDlg::OnEnSetfocusEditActionname)
 //	ON_EN_SETFOCUS(IDC_EditBrowse_SelectFile, &CluaTestToolDlg::OnEnSetfocusEditbrowseSelectfile)
 //ON_CBN_SELCHANGE(IDC_COMBO_Action, &CluaTestToolDlg::OnCbnSelchangeComboAction)
 END_MESSAGE_MAP()
@@ -195,7 +192,6 @@ BOOL CluaTestToolDlg::OnInitDialog()
 
 	//设置控件初始值
 	m_EditBrowse_SelectFile_str	= "D:/Users/sjlv/Documents/Visual Studio 2010/Projects/luaTestTool/luaTestTool/luaSrc/train_train.lua";
-	m_Edit_ActionName_str		= "mobileinit";
 	m_Edit_SourceType_str		= "";
 	m_Edit_Params_str			= "\"\'\'\"";
 	//m_Edit_ServerCmd_str		= "通过分号来分割，若只有一个ServerCmd，则这栏可以不填";
@@ -588,7 +584,7 @@ void CluaTestToolDlg::OnBnClickedOk()
 	//获取控件返回值
 	UpdateData();
 	
-	AfxMessageBox(m_Combo_Action_str);
+	//AfxMessageBox(m_Combo_Action_str);
 	//若一个Action内不只一个ServerCmd，则通过ServerCmd控制其继续执行
 	CString strBuffer(_T(""));
 	CString serverCmdArry[16];
@@ -597,7 +593,7 @@ void CluaTestToolDlg::OnBnClickedOk()
 		serverCmdArry[cmdCount++] = (strBuffer);
 
 	//第一次运行Lua脚本，执行Request部分
-	lua2app = runLuaScript(m_Edit_ActionName_str, m_Edit_SourceType_str, m_Edit_Params_str, m_EditBrowse_SelectFile_str);
+	lua2app = runLuaScript(m_Combo_Action_str, m_Edit_SourceType_str, m_Edit_Params_str, m_EditBrowse_SelectFile_str);
 
 	while(cmdCount,cmdCount>0,cmdCount--)
 	{	
@@ -614,7 +610,7 @@ void CluaTestToolDlg::OnBnClickedOk()
 		app2lua = encodeJson("");
 
 		//再次运行Lua脚本，执行Response部分,并获取下一次的Request部分
-		lua2app = runLuaScript(m_Edit_ActionName_str, m_Edit_SourceType_str, app2lua, m_EditBrowse_SelectFile_str);
+		lua2app = runLuaScript(m_Combo_Action_str, m_Edit_SourceType_str, app2lua, m_EditBrowse_SelectFile_str);
 
 	}
 
@@ -628,14 +624,6 @@ void CluaTestToolDlg::OnBnClickedOk()
 //{
 //	// TODO: Add your control notification handler code here
 //	m_Edit_ServerCmd_str = "";
-//	UpdateData(FALSE);
-//}
-
-
-//void CluaTestToolDlg::OnEnSetfocusEditActionname()
-//{
-//	// TODO: Add your control notification handler code here
-//	m_Edit_ActionName_str = "";
 //	UpdateData(FALSE);
 //}
 

@@ -33,9 +33,7 @@ protected:
 	DECLARE_MESSAGE_MAP()
 public:
 	CMFCEditBrowseCtrl m_EditBrowse_SelectFile;
-	CEdit m_Edit_ActionName;
 	afx_msg void OnBnClickedOk();
-	CString m_Edit_ActionName_str;
 	CString m_EditBrowse_SelectFile_str;
 	CString m_Edit_SourceType_str;
 	CString m_Edit_Params_str;
