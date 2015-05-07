@@ -63,21 +63,33 @@ function string:split(sep)
   return fields;
 end
 
---提取输入项
-function getObjectValueByPath(obj, path)
-  if (obj == nil or path == nil) then return nil end;
+--日期修正
+function dateAddDay(date, day, fmt)
+	if (fmt == nil) then fmt = "%Y%m%d" end;
+	if (date == nil) then return date end;
+	local reg, sp, ep, ty, tm, td;
+	local isok = 0;
 
-  local rst = obj;
-  local arr = string.split(path, ".");
-  for k,v in ipairs(arr) do
-    if (v == nil) then rst = nil;break;end;
-    if (type(rst) ~= "table") then rst = nil;break;end;
-    local sp, ep, val = string.find(v, "^#(%d)");
-    if (sp) then v = tonumber(val) end;
-    rst = rst[v];
-    if (rst == nil) then break end;
-  end;
-  return rst;
+	if (isok == 0) then
+		sp, ep, ty, tm, td = string.find(date, "^(%d%d%d%d)(%d%d)(%d%d)$");
+		if (sp ~= nil) then isok = 1 end;
+	end
+
+	if (isok == 0) then
+		local str = string.gsub(string.gsub(string.gsub(date, "年", "y"), "月", "m"), "日", "d");
+		sp, ep, ty, tm, td = string.find(str, "(%d+)[y%-](%d+)[m%-](%d+)");
+		if (sp ~= nil) then isok = 1 end;
+	end
+
+	if (isok == 0) then return date end;
+
+	td = td + day;
+	local rst = os.date(fmt, os.time({year = ty, month = tm, day = td}));
+	return rst;
+end
+
+function fixDate(date, fmt)
+	return dateAddDay(date, 0, fmt);
 end
 
 ---[[bit库代码块
@@ -649,8 +661,6 @@ function InitStep1Response(info, response)
 	local wlInstanceId = jData.challenges["wl_antiXSRFRealm"]["WL-Instance-Id"];
 	local morCustomRealm = jData.challenges["morCustomRealm"]["WL-Challenge-Data"];
 
---~ 	local morCustomRealm = getObjectValueByPath(jsonData, "challenges.morCustomRealm.WL-Chanllenge-Data") or "";
---~ 	local wlInstanceId = getObjectValueByPath(jsonData, "challenges.wl_antiXSRFRealm.WL-Instance-Id") or "";
 	if morCustomRealm == "" or wlInstanceId == "" then
 		rst.code = -1;
 		rst.message = "InstanceId未找到";
@@ -659,7 +669,7 @@ function InitStep1Response(info, response)
 	info["WL-Instance-Id"] = wlInstanceId;
 	info["morCustomRealm"] = BuildCode(morCustomRealm);
 
-	print("------------morCustomRealm = "..info["morCustomRealm"]);
+--~ 	print("------------morCustomRealm = "..info["morCustomRealm"]);
 
 	rst.code = 1;
 	rst.message = "正在初始化"
@@ -681,12 +691,8 @@ function InitStep2Request(info)
 	local buffer = {};
 	buffer["morCustomRealm"] = (info["morCustomRealm"]);
 	--拼接Authorization字段
---~ 	local authorization = "";
---~ 	for k, v in pairs(buffer) do
---~ 		authorization = authorization..'"'..k..'":"'..v..'",'
---~ 	end
 	local authorization = cjson.encode(buffer);
-	print("-----------Authorization = "..authorization)
+--~ 	print("-----------Authorization = "..authorization)
 
     rst.header["Authorization"] = authorization;
 
@@ -709,7 +715,6 @@ function InitStep2Response(info, response)
 
 	local jData = cjson.decode(jsonData);
 	local token = jData.challenges["wl_deviceNoProvisioningRealm"]["token"];
---~ 	local token = getObjectValueByPath(jsonData, "challenges.wl_deviceNoProvisioningRealm.token") or "";
 	if token == "" then
 		rst.code = -1;
 		rst.message = "token未找到";
@@ -784,7 +789,8 @@ end
 function InitStep3Response(info, response)
 	local rst = check12306Response(response);
 	if (rst.code < 0) then return rst; end;
-	print("InitStep3Response\nInitStep3Response\nInitStep3Response\n");
+--~ 	print("InitStep3Response\nInitStep3Response\nInitStep3Response\n");
+	rst.message = "mobile init success!"
 	return rst;
 end
 
@@ -800,7 +806,6 @@ function doMoBileInitParser()
 		rst.headsInfo = ReachRequest(serverData);
 		swapInfo.server_cmd = "reach";
 	elseif(swapInfo.server_cmd == "reach") then
---~ 		print("1");
 		local info = ReachResponse(serverData, response);
 		rst.code, rst.message, rst.dataInfo = info.code, info.message, nil;
 		if (info.code < 0) then

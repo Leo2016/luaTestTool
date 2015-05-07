@@ -26,6 +26,7 @@ lua_State *lua;					//a variable point to lua
 Json::Value swapInfo;
 Json::Value headsInfo;
 Json::Value responseData;
+Json::Value actionParams;
 CString responseBody;
 
 #ifdef _DEBUG
@@ -76,6 +77,7 @@ CluaTestToolDlg::CluaTestToolDlg(CWnd* pParent /*=NULL*/)
 	, m_Edit_SourceType_str(_T(""))
 	, m_Edit_Params_str(_T(""))
 	, m_Edit_ServerCmd_str(_T(""))
+	, m_Combo_Action_str(_T(""))
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 	lua2app = _T("");
@@ -92,6 +94,8 @@ void CluaTestToolDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Text(pDX, IDC_Edit_SourceType, m_Edit_SourceType_str);
 	DDX_Text(pDX, IDC_Edit_Params, m_Edit_Params_str);
 	DDX_Text(pDX, IDC_Edit_ServerCmd, m_Edit_ServerCmd_str);
+	DDX_CBString(pDX, IDC_COMBO_Action, m_Combo_Action_str);
+	DDX_Control(pDX, IDC_COMBO_Action, m_Combo_Action);
 }
 
 BEGIN_MESSAGE_MAP(CluaTestToolDlg, CDialogEx)
@@ -102,9 +106,51 @@ BEGIN_MESSAGE_MAP(CluaTestToolDlg, CDialogEx)
 //	ON_EN_SETFOCUS(IDC_Edit_ServerCmd, &CluaTestToolDlg::OnEnSetfocusEditServercmd)
 //	ON_EN_SETFOCUS(IDC_Edit_ActionName, &CluaTestToolDlg::OnEnSetfocusEditActionname)
 //	ON_EN_SETFOCUS(IDC_EditBrowse_SelectFile, &CluaTestToolDlg::OnEnSetfocusEditbrowseSelectfile)
+//ON_CBN_SELCHANGE(IDC_COMBO_Action, &CluaTestToolDlg::OnCbnSelchangeComboAction)
 END_MESSAGE_MAP()
 
+//combo控件初始化,从config.txt读取参数
+bool CluaTestToolDlg::actionListInit()
+{
+	std::ifstream file;
+	file.open("config.txt");
+	if (!file)
+	{
+		AfxMessageBox("config.txt open failed!");
+		return false;
+	}
 
+	Json::Reader reader;
+	Json::Value  root;
+	if (!reader.parse(file, root, false))  
+	{
+		AfxMessageBox("parse json data failed!");
+		return false;
+	}
+
+	int itemSize;
+	if (itemSize = root["action"].size(),itemSize == 0)
+	{
+		AfxMessageBox("there are no \"action\" items");
+		return false;
+	}
+
+	//读入action，并添加至Combo控件
+	CString code;
+	for (int i = 0; i < itemSize; i++)
+	{
+		code = root["action"][i].asCString();
+		m_Combo_Action.AddString(code);
+	}
+
+	//若params不为空，则将其读入内存以备用
+	if (!root["params"].isNull())
+	{
+		actionParams = root["params"];
+	}
+
+	return true;
+}
 // CluaTestToolDlg message handlers
 
 BOOL CluaTestToolDlg::OnInitDialog()
@@ -148,13 +194,21 @@ BOOL CluaTestToolDlg::OnInitDialog()
 	luaL_openlibs(lua);
 
 	//设置控件初始值
-	//m_EditBrowse_SelectFile_str	= "D:/Users/sjlv/Documents/Visual Studio 2010/Projects/luaTestTool/luaTestTool/luaSrc/train_train.lua";
+	m_EditBrowse_SelectFile_str	= "D:/Users/sjlv/Documents/Visual Studio 2010/Projects/luaTestTool/luaTestTool/luaSrc/train_train.lua";
 	m_Edit_ActionName_str		= "mobileinit";
 	m_Edit_SourceType_str		= "";
 	m_Edit_Params_str			= "\"\'\'\"";
 	//m_Edit_ServerCmd_str		= "通过分号来分割，若只有一个ServerCmd，则这栏可以不填";
 	m_Edit_ServerCmd_str		= "aa;bb;cc;dd";
 	UpdateData(FALSE);
+
+	//combo控件初始化,从config.txt读取参数
+	if (!actionListInit())
+	{
+		AfxMessageBox("Combo Control Init Failed!");
+		return FALSE;
+	}
+	
 
 	return TRUE;  // return TRUE  unless you set the focus to a control
 }
@@ -214,13 +268,6 @@ HCURSOR CluaTestToolDlg::OnQueryDragIcon()
 CString trim(std::string in)
 {
 	CString out = in.c_str();
-	out.Delete(-1, 1);				//去掉前面的一个引号
-	out.Delete(out.GetLength()-2, 2);//去掉后面的两个引号
-	return out;
-}
-CString trimCString(CString in)
-{
-	CString out = in;
 	out.Delete(-1, 1);				//去掉前面的一个引号
 	out.Delete(out.GetLength()-2, 2);//去掉后面的两个引号
 	return out;
@@ -541,6 +588,7 @@ void CluaTestToolDlg::OnBnClickedOk()
 	//获取控件返回值
 	UpdateData();
 	
+	AfxMessageBox(m_Combo_Action_str);
 	//若一个Action内不只一个ServerCmd，则通过ServerCmd控制其继续执行
 	CString strBuffer(_T(""));
 	CString serverCmdArry[16];
@@ -597,4 +645,10 @@ void CluaTestToolDlg::OnBnClickedOk()
 //	// TODO: Add your control notification handler code here
 //	m_EditBrowse_SelectFile_str = "";
 //	UpdateData(FALSE);
+//}
+
+
+//void CluaTestToolDlg::OnCbnSelchangeComboAction()
+//{
+//	// TODO: Add your control notification handler code here
 //}

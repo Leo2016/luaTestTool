@@ -45,4 +45,8 @@ public:
 //	afx_msg void OnEnSetfocusEditServercmd();
 //	afx_msg void OnEnSetfocusEditActionname();
 //	afx_msg void OnEnSetfocusEditbrowseSelectfile();
+	CString m_Combo_Action_str;
+	CComboBox m_Combo_Action;
+	bool actionListInit();
+//	afx_msg void OnCbnSelchangeComboAction();
 };

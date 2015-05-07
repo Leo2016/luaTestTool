@@ -1,0 +1,10 @@
+{
+"action":[
+	"mobileinit",
+	"queryleftticket"
+	],
+"params":[
+	{"action":"action1","params1":"","params2":""},
+	{"action":"action2","params1":"","params2":""}
+	]
+}
