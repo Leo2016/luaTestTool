@@ -74,7 +74,6 @@ CluaTestToolDlg::CluaTestToolDlg(CWnd* pParent /*=NULL*/)
 	: CDialogEx(CluaTestToolDlg::IDD, pParent)
 	, m_EditBrowse_SelectFile_str(_T(""))
 	, m_Edit_SourceType_str(_T(""))
-	, m_Edit_Params_str(_T(""))
 	, m_Edit_ServerCmd_str(_T(""))
 	, m_Combo_Action_str(_T(""))
 {
@@ -90,7 +89,6 @@ void CluaTestToolDlg::DoDataExchange(CDataExchange* pDX)
 
 	DDX_Text(pDX, IDC_EditBrowse_SelectFile, m_EditBrowse_SelectFile_str);
 	DDX_Text(pDX, IDC_Edit_SourceType, m_Edit_SourceType_str);
-	DDX_Text(pDX, IDC_Edit_Params, m_Edit_Params_str);
 	DDX_Text(pDX, IDC_Edit_ServerCmd, m_Edit_ServerCmd_str);
 	DDX_CBString(pDX, IDC_COMBO_Action, m_Combo_Action_str);
 	DDX_Control(pDX, IDC_COMBO_Action, m_Combo_Action);
@@ -100,10 +98,10 @@ BEGIN_MESSAGE_MAP(CluaTestToolDlg, CDialogEx)
 	ON_WM_SYSCOMMAND()
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
-	ON_BN_CLICKED(IDOK, &CluaTestToolDlg::OnBnClickedOk)
 //	ON_EN_SETFOCUS(IDC_Edit_ServerCmd, &CluaTestToolDlg::OnEnSetfocusEditServercmd)
 //	ON_EN_SETFOCUS(IDC_EditBrowse_SelectFile, &CluaTestToolDlg::OnEnSetfocusEditbrowseSelectfile)
 //ON_CBN_SELCHANGE(IDC_COMBO_Action, &CluaTestToolDlg::OnCbnSelchangeComboAction)
+ON_BN_CLICKED(IDC_Btn_Start, &CluaTestToolDlg::OnBnClickedBtnStart)
 END_MESSAGE_MAP()
 
 //combo控件初始化,从config.txt读取参数
@@ -193,7 +191,6 @@ BOOL CluaTestToolDlg::OnInitDialog()
 	//设置控件初始值
 	m_EditBrowse_SelectFile_str	= "D:/Users/sjlv/Documents/Visual Studio 2010/Projects/luaTestTool/luaTestTool/luaSrc/train_train.lua";
 	m_Edit_SourceType_str		= "";
-	m_Edit_Params_str			= "\"\'\'\"";
 	//m_Edit_ServerCmd_str		= "通过分号来分割，若只有一个ServerCmd，则这栏可以不填";
 	m_Edit_ServerCmd_str		= "aa;bb;cc;dd";
 	UpdateData(FALSE);
@@ -575,47 +572,33 @@ bool handleHTTP()
 	
 	return true;
 }
+bool CluaTestToolDlg::haveParamsInConfig()
+{
+	int itemSize = actionParams.size();
+
+	for (int i = 0; i < itemSize; i++)
+	{
+		CString code = actionParams[i]["action"].asCString();
+		if (code == m_Combo_Action_str)
+		{
+			Json::Value root;
+			Json::FastWriter writer;  
+			root["params"] = actionParams[i]["params"];
+			std::string jsonStr = writer.write(root);
+			app2lua = jsonStr.c_str();
+
+			return true;
+		}
+	}
+	return false;
+}
 
 void CluaTestToolDlg::OnBnClickedOk()
 {
 	// TODO: Add your control notification handler code here
 	CDialogEx::OnOK();
 
-	//获取控件返回值
-	UpdateData();
 	
-	//AfxMessageBox(m_Combo_Action_str);
-	//若一个Action内不只一个ServerCmd，则通过ServerCmd控制其继续执行
-	CString strBuffer(_T(""));
-	CString serverCmdArry[16];
-	int cmdCount = 0;
-	while (AfxExtractSubString(strBuffer, m_Edit_ServerCmd_str.GetBuffer(0), cmdCount, _T(';')))
-		serverCmdArry[cmdCount++] = (strBuffer);
-
-	//第一次运行Lua脚本，执行Request部分
-	lua2app = runLuaScript(m_Combo_Action_str, m_Edit_SourceType_str, m_Edit_Params_str, m_EditBrowse_SelectFile_str);
-
-	while(cmdCount,cmdCount>0,cmdCount--)
-	{	
-		//MFC解析Lua返回Header信息，Json格式
-		decodeJson(lua2app);
-
-		//MFC发送HTTP请求并接收响应
-		if (!handleHTTP()){
-			AfxMessageBox("http request failed, please check it!");
-			return;
-		}
-
-		//打包服务器返回值
-		app2lua = encodeJson("");
-
-		//再次运行Lua脚本，执行Response部分,并获取下一次的Request部分
-		lua2app = runLuaScript(m_Combo_Action_str, m_Edit_SourceType_str, app2lua, m_EditBrowse_SelectFile_str);
-
-	}
-
-	//用完lua的时候，调用下面一句来关闭lua库：
-	lua_close (lua);
 	return;
 }
 
@@ -640,3 +623,47 @@ void CluaTestToolDlg::OnBnClickedOk()
 //{
 //	// TODO: Add your control notification handler code here
 //}
+
+
+void CluaTestToolDlg::OnBnClickedBtnStart()
+{
+	// TODO: Add your control notification handler code here
+	//获取控件返回值
+	UpdateData();
+
+	//若一个Action内不只一个ServerCmd，则通过ServerCmd控制其继续执行
+	CString strBuffer(_T(""));
+	CString serverCmdArry[16];
+	int cmdCount = 0;
+	while (AfxExtractSubString(strBuffer, m_Edit_ServerCmd_str.GetBuffer(0), cmdCount, _T(';')))
+		serverCmdArry[cmdCount++] = (strBuffer);
+
+	//从config.txt的params里寻找action相关params
+	if (!haveParamsInConfig())
+		app2lua = "''";
+
+	//第一次运行Lua脚本，执行Request部分
+	lua2app = runLuaScript(m_Combo_Action_str, m_Edit_SourceType_str, app2lua, m_EditBrowse_SelectFile_str);
+
+	while(cmdCount,cmdCount>0,cmdCount--)
+	{	
+		//MFC解析Lua返回Header信息，Json格式
+		decodeJson(lua2app);
+
+		//MFC发送HTTP请求并接收响应
+		if (!handleHTTP()){
+			AfxMessageBox("http request failed, please check it!");
+			return;
+		}
+
+		//打包服务器返回值
+		app2lua = encodeJson("");
+
+		//再次运行Lua脚本，执行Response部分,并获取下一次的Request部分
+		lua2app = runLuaScript(m_Combo_Action_str, m_Edit_SourceType_str, app2lua, m_EditBrowse_SelectFile_str);
+
+	}
+
+	//用完lua的时候，调用下面一句来关闭lua库：
+	lua_close (lua);
+}

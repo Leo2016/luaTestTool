@@ -55,6 +55,40 @@ end
 
 
 
+
+function check12306JSONResponse(response)
+	local rst = {};
+	if(response.code ~="200") then rst.code, rst.message = -11, "12306异常"; return rst; end
+
+	local html = response.body;
+
+	if (cjson.testFlag ~= nil) then
+		html = string.gsub(html, "\"messages\"%:%[%]", "");
+		html = string.gsub(html, "\"data\"%:%[%]", "");
+		response.body = html;
+	end
+	if (html == "-1") then rst.code, rst.message = -12, "12306数据解析错误(02)"; return rst; end
+
+	rst.json = cjson.decode(html);
+	if (rst.json == nil) then rst.code, rst.message = -13, "12306数据解析错误"; return rst; end
+
+	local msg = getFirstObj(rst.json.messages);
+	if (rst.json.status == false) then
+		if (isNullOrEmpty(msg)) then msg = "12306 数据异常"; end;
+    rst.code = -345;
+    rst.message = "dataError";
+		return rst;
+	end;
+
+	if (isNotNullOrEmpty(msg)) then
+		rst.code, rst.message = -323, msg;
+    if string.find(msg, "登录已失效") then rst.code = -96; end;
+		return rst;
+	end
+
+	rst.code, rst.message, rst.data = 1, "", {};
+	return rst;
+end
 --字符串拆分
 function string:split(sep)
   local fields = {};
@@ -92,6 +126,33 @@ function fixDate(date, fmt)
 	return dateAddDay(date, 0, fmt);
 end
 
+
+--复制数据
+function copyTable(from, to)
+	if (to ~= nil and from ~= nil) then
+		for k,v in pairs(from) do
+			to[k] = v
+		end;
+	end;
+end;
+--检查参数合法性
+function checkYuPiaoParams(info)
+  local rst = {code = 1, message = ""};
+  if (isNullOrEmpty(info.fromCode)) then rst.code, rst.message = -1, "出发站没有找到";return rst; end;
+  if (isNullOrEmpty(info.toCode)) then rst.code, rst.message = -1, "到达站没有找到";return rst; end;
+
+  if (info.fromCode == info.toCode) then rst.code, rst.message = -1, "出发地与目的地不能相同";return rst; end;
+
+  return rst;
+end
+
+function isNullOrEmpty(str)
+	if (str == nil or str == "" or str == cjson.null) then return true end;
+	return false;
+end;
+function isNotNullOrEmpty(str)
+	return not isNullOrEmpty(str);
+end;
 ---[[bit库代码块
 do
 local function check_int(n)
@@ -846,41 +907,30 @@ end
 
 ---[[12306APP端查询余票代码块
 function QueryLeftTicketRequest(info)
-	local rst = getEmptyHeads();
+	local rst = getEmptyReturn();
 	info.date = fixDate(info.date);
---~ 	在Fiddler上可以通过这个url调通，但是这个url不是很标准，少了几个参数，但是就是能调通。
---~ 	local url = {
---~ 		"https://mobile.12306.cn/otsmobile/invoke?adapter=CARSMobileServiceAdapterV2&procedure=queryLeftTicket&compressResponse=true",
---~ 		"&parameters=%5B%7B",
---~ 			"%22train_date%22%3A%22",info.date,	--20150413
---~ 			"%22%2C%22purpose_codes%22%3A%22",info.purpose_codes	--00
---~ 			"%22%2C%22from_station%22%3A%22",info.fromStation	--BJP
---~ 			"%22%2C%22to_station%22%3A%22",info.toStation	--SHH
---~ 			"%22%2C%22station_train_code%22%3A%22%22%2C%22start_time_begin%22%3A%220000%22%2C%22start_time_end%22%3A%222400%22%2C%22train_headers%22%3A%22QB%23%22%2C%22train_flag%22%3A%22%22%2C%22seat_type%22%3A%22%22%2C%22seatBack_Type%22%3A%22%22%2C%22ticket_num%22%3A%22%22%2C%22baseDTO.os_type%22%3A%22i%22%2C%22baseDTO.device_no%22%3A%227D88423C-A701-4FC6-A30C-1B338715FDE6%22%2C%22baseDTO.mobile_no%22%3A%22123444%22%2C%22baseDTO.time_str%22%3A%2220150409225715%22%2C"
---~ 	};
+--~ 这里是电脑测试时用的脚本，deviceNo和mobileNo都写死了
 	local url = {
-		"https://mobile.12306.cn/otsmobile/invoke?adapter=CARSMobileServiceAdapterV2&procedure=queryLeftTicket&compressResponse=true",
-		"&parameters=%5B%7B",
-			"%22train_date%22%3A%22",info.date,	--20150413
-			"%22%2C%22purpose_codes%22%3A%22",info.purpose_codes	--00
-			"%22%2C%22from_station%22%3A%22",info.fromStation	--BJP
-			"%22%2C%22to_station%22%3A%22",info.toStation	--SHH
-			"%22%2C%22station_train_code%22%3A%22%22%2C%22start_time_begin%22%3A%220000%22%2C%22start_time_end%22%3A%222400%22%2C%22train_headers%22%3A%22QB%23%22%2C%22train_flag%22%3A%22%22%2C%22seat_type%22%3A%22%22%2C%22seatBack_Type%22%3A%22%22%2C%22ticket_num%22%3A%22",
-			"%22%2C%22baseDTO.os_type%22%3A%22","i",
-			"%22%2C%22baseDTO.device_no%22%3A%",info.wlChallengeData.guid2,--227D88423C-A701-4FC6-A30C-1B338715FDE6
-			"%22%2C%22baseDTO.mobile_no%22%3A%22","123444",
-			"%22%2C%22baseDTO.time_str%22%3A%22",info.wlChallengeData.time,--20150409225715
-			"%22%2C"
+			'https://mobile.12306.cn/otsmobile/invoke?adapter=CARSMobileServiceAdapterV2&procedure=queryLeftTicket&compressResponse=true&parameters=%5B%7B%22train_date%22%3A%22',
+			info.date,
+			'%22%2C%22purpose_codes%22%3A%2200%22%2C%22from_station%22%3A%22',
+			info.fromCode,
+			'%22%2C%22to_station%22%3A%22',
+			info.toCode,
+			'%22%2C%22station_train_code%22%3A%22%22%2C%22start_time_begin%22%3A%22',
+			info.startTime,
+			'%22%2C%22start_time_end%22%3A%22',
+			info.endTime,
+			'%22%2C%22train_headers%22%3A%22QB%23%22%2C%22train_flag%22%3A%22%22%2C%22seat_type%22%3A%22%22%2C%22seatBack_Type%22%3A%22%22%2C%22ticket_num%22%3A%22%22%2C%22baseDTO.os_type%22%3A%22i%22%2C%22baseDTO.device_no%22%3A%227D88423C-A701-4FC6-A30C-1B338715FDE6%22%2C%22baseDTO.mobile_no%22%3A%22123444%22%2C%22baseDTO.time_str%22%3A%2220150409225715%22%2C%22baseDTO.check_code%22%3A%22437e0cccc99d3bb0fb225da8bac90ceb%22%2C%22baseDTO.version_no%22%3A%221.1%22%2C%22baseDTO.user_name%22%3A%22w810.cc%40gmail.com%22%7D%5D&__wl_deviceCtxVersion=-1&__wl_deviceCtxSession=107556181428591422209&isAjaxRequest=true&x=0.7115434680599719'
 	};
-
-	rst.request_method = "GET";
-	rst.request_url = table.concat(url);
-    rst.request_info.request_message ="正在查询";
-	rst.request_info["header_User-Agent"] = "Mozilla/5.0 (iPhone; CPU iPhone OS 8_2 like Mac OS X) AppleWebKit/600.1.4 (KHTML, like Gecko) Mobile/12D508 (384115952)/Worklight/6.0.0";
-    rst.request_info["header_WL-Instance-Id"] = info["WL-Instance-Id"];
-    rst.request_info["header_X-Requested-With"] = "XMLHttpRequest";
-    rst.request_info["header_x-wl-app-version"] = "2.0";
-    rst.request_info["header_x-wl-platform-version"] = "6.0.0";
+	rst.method = "GET";
+	rst.url = table.concat(url);
+    rst.info.message ="正在查询";
+	rst.header["User-Agent"] = "Mozilla/5.0 (iPhone; CPU iPhone OS 8_2 like Mac OS X) AppleWebKit/600.1.4 (KHTML, like Gecko) Mobile/12D508 (384115952)/Worklight/6.0.0";
+    rst.header["WL-Instance-Id"] = info["WL-Instance-Id"];
+    rst.header["X-Requested-With"] = "XMLHttpRequest";
+    rst.header["x-wl-app-version"] = "2.0";
+    rst.header["x-wl-platform-version"] = "6.0.0";
 	return rst;
 end
 
@@ -891,10 +941,12 @@ function QueryLeftTicketResponse(info, response)
 	local sp, ep, val, reg = nil, nil, nil, nil;
 	reg = "\/\*-secure%s*-%s*([^\*].-)%s*\*\/";
 	sp, ep, jsonData = string.find(response.body, reg);
-
-	local list = getObjectValueByPath(jsonData, "ticketResult");
+	local jData = cjson.decode(jsonData)
+	local list = jData["ticketResult"];
+--~ 	local list = getObjectValueByPath(jsonData, "ticketResult");
 	if (list == nil) then
-		rst.code, rst.message = -1, getObjectValueByPath(jsonData, "error_message");--还需要再找个错误的用例看看具体的错误形式
+--~ 		rst.code, rst.message = -1, getObjectValueByPath(jsonData, "error_message");--还需要再找个错误的用例看看具体的错误形式
+		rst.code, rst.message = -1, jData["error_message"];--还需要再找个错误的用例看看具体的错误形式
 		if (rst.message == nil) then
 			rst.message = "没有符合条件的车次(001)";
 		end;
@@ -1118,6 +1170,6 @@ function doParser(source, action, json)
 end
 
 
---~ aa = doParser("", "mobileinit", [[{"code":1,"params":"","responseData":{"body":"/*-secure-\n{\"challenges\":{\"wl_antiXSRFRealm\":{\"WL-Instance-Id\":\"b6jbe8befn2ucaperg62koqq2o\"},\"morCustomRealm\":{\"WL-Challenge-Data\":\"514574N306024X5F23A66AS277924C596668X915B046ES515959N192015N855596C127455C749371C364321N159003X750F31E8S887911X63C13F8CS\"}}}*/","code":200,"header":""},"swapInfo":{"server_cmd":"initStep1","server_data":[]}}]])
+--~ aa = doParser("", "mobilequeryleftticket", [[{"params":{"date":"20150514","endTime":"2400","fromCode":"HZH","fromName":"鏉窞","startTime":"0000","toCode":"SHH","toName":"涓婃捣"}}]])
 --~ print(aa)
 

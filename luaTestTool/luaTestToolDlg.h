@@ -36,7 +36,6 @@ public:
 	afx_msg void OnBnClickedOk();
 	CString m_EditBrowse_SelectFile_str;
 	CString m_Edit_SourceType_str;
-	CString m_Edit_Params_str;
 	CString m_Edit_ServerCmd_str;
 	CString lua2app;
 	CString app2lua;
@@ -46,5 +45,7 @@ public:
 	CString m_Combo_Action_str;
 	CComboBox m_Combo_Action;
 	bool actionListInit();
+	bool haveParamsInConfig();
 //	afx_msg void OnCbnSelchangeComboAction();
+	afx_msg void OnBnClickedBtnStart();
 };
